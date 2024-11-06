@@ -9,30 +9,40 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/gif"
 	"io"
+	"log"
 	"math"
 	"math/rand"
+	"net/http"
+	"strconv"
+
 	"os"
+	"time"
 )
 
 //!-main
 // Packages not needed by version in book.
-import (
-	"log"
-	"net/http"
-	"time"
-)
 
 //!+main
 
-var palette = []color.Color{color.White, color.Black}
+var palette = []color.Color{
+	// color.White,
+	color.Black,
+	color.RGBA{0x00, 0xff, 0x00, 0xff},
+	color.RGBA{0xff, 0x00, 0xff, 0xff},
+	color.RGBA{0x00, 0x77, 0x77, 0xff},
+}
 
 const (
-	whiteIndex = 0 // first color in palette
+	// whiteIndex = 0 // first color in palette
 	blackIndex = 1 // next color in palette
+	greenIndex = 2
+	fuxiaIndex = 3
+	lastIndex  = 4
 )
 
 func main() {
@@ -45,7 +55,14 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "web" {
 		//!+http
 		handler := func(w http.ResponseWriter, r *http.Request) {
-			lissajous(w)
+			// Read from request
+			cycles, err := strconv.Atoi(r.URL.Query().Get("cycles"))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			
+			lissajous(w, float64(cycles))
 		}
 		http.HandleFunc("/", handler)
 		//!-http
@@ -53,12 +70,13 @@ func main() {
 		return
 	}
 	//!+main
-	lissajous(os.Stdout)
+	// Pass the initial value
+	lissajous(os.Stdout, 5)
 }
 
-func lissajous(out io.Writer) {
+func lissajous(out io.Writer, cycles float64) {
 	const (
-		cycles  = 5     // number of complete x oscillator revolutions
+		// cycles  = 5     // number of complete x oscillator revolutions
 		res     = 0.001 // angular resolution
 		size    = 100   // image canvas covers [-size..+size]
 		nframes = 64    // number of animation frames
@@ -74,7 +92,7 @@ func lissajous(out io.Writer) {
 			x := math.Sin(t)
 			y := math.Sin(t*freq + phase)
 			img.SetColorIndex(size+int(x*size+0.5), size+int(y*size+0.5),
-				blackIndex)
+				uint8(rand.Int())%3)
 		}
 		phase += 0.1
 		anim.Delay = append(anim.Delay, delay)

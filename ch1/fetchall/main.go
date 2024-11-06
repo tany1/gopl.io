@@ -10,19 +10,23 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 func main() {
+	const prefix = "https://dexonline.ro/definitie/"
+
 	start := time.Now()
 	ch := make(chan string)
-	for _, url := range os.Args[1:] {
-		go fetch(url, ch) // start a goroutine
+	words := getWords(os.Args[1])
+	fmt.Println(words)
+	for _, word := range words {
+		go fetch(prefix+word, ch) // start a goroutine
 	}
-	for range os.Args[1:] {
+	for range words {
 		fmt.Println(<-ch) // receive from channel ch
 	}
 	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
@@ -36,14 +40,25 @@ func fetch(url string, ch chan<- string) {
 		return
 	}
 
-	nbytes, err := io.Copy(ioutil.Discard, resp.Body)
+	nbytes, err := io.Copy(io.Discard, resp.Body)
 	resp.Body.Close() // don't leak resources
 	if err != nil {
 		ch <- fmt.Sprintf("while reading %s: %v", url, err)
 		return
 	}
 	secs := time.Since(start).Seconds()
-	ch <- fmt.Sprintf("%.2fs  %7d  %s", secs, nbytes, url)
+	ch <- fmt.Sprintf("%.2fs  %7d  %s %d", secs, nbytes, url, resp.StatusCode)
+}
+
+// Get a slice of words from a file
+func getWords(fileName string) []string {
+	data, err := os.ReadFile(fileName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+	}
+
+	// Append to an empty string slice
+	return append(make([]string, 0), strings.Split(string(data), "\n")...)
 }
 
 //!-

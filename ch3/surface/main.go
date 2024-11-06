@@ -9,11 +9,18 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"log"
 	"math"
+	"net/http"
+	"strconv"
+	// "os"
+	// "sort"
+	// "strconv"
 )
 
 const (
-	width, height = 600, 320            // canvas size in pixels
+	width, height = 600, 600            // canvas size in pixels
 	cells         = 100                 // number of grid cells
 	xyrange       = 30.0                // axis ranges (-xyrange..+xyrange)
 	xyscale       = width / 2 / xyrange // pixels per x or y unit
@@ -22,22 +29,58 @@ const (
 )
 
 var sin30, cos30 = math.Sin(angle), math.Cos(angle) // sin(30°), cos(30°)
+var readWidth, readHeight = width, height
+
+// Red
+var color = "#ff0000"
 
 func main() {
-	fmt.Printf("<svg xmlns='http://www.w3.org/2000/svg' "+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		// Read from request
+		var err error
+		readWidth, err = strconv.Atoi(r.URL.Query().Get("width"))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		readHeight, err = strconv.Atoi(r.URL.Query().Get("height"))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		// Set content type
+		w.Header().Set("Content-Type", "image/svg+xml")
+
+		writerFunc(w)
+	}
+
+	http.HandleFunc("/", handler)
+
+	//!-http
+	log.Fatal(http.ListenAndServe("localhost:8000", nil))
+}
+
+var zValues []float64
+
+func writerFunc(s io.Writer) {
+	fmt.Fprintf(s, "<svg xmlns='http://www.w3.org/2000/svg' "+
 		"style='stroke: grey; fill: white; stroke-width: 0.7' "+
-		"width='%d' height='%d'>", width, height)
+		"width='%d' height='%d'>", readWidth, readHeight)
 	for i := 0; i < cells; i++ {
 		for j := 0; j < cells; j++ {
+			// Reset color
+			color = "#ff0000"
+
 			ax, ay := corner(i+1, j)
 			bx, by := corner(i, j)
 			cx, cy := corner(i, j+1)
 			dx, dy := corner(i+1, j+1)
-			fmt.Printf("<polygon points='%g,%g %g,%g %g,%g %g,%g'/>\n",
-				ax, ay, bx, by, cx, cy, dx, dy)
+			fmt.Fprintf(s, "<polygon points='%g,%g %g,%g %g,%g %g,%g' style=\"fill:%s\" />\n",
+				ax, ay, bx, by, cx, cy, dx, dy, color)
 		}
 	}
-	fmt.Println("</svg>")
+	fmt.Fprint(s, "</svg>")
 }
 
 func corner(i, j int) (float64, float64) {
@@ -47,6 +90,16 @@ func corner(i, j int) (float64, float64) {
 
 	// Compute surface height z.
 	z := f(x, y)
+
+	if math.IsNaN(z) {
+		z = 1.
+	}
+
+	if z <= 0.03 {
+		color = "#0000ff"
+	}
+
+	zValues = append(zValues, z)
 
 	// Project (x,y,z) isometrically onto 2-D SVG canvas (sx,sy).
 	sx := width/2 + (x-y)*cos30*xyscale

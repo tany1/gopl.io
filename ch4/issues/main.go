@@ -11,20 +11,47 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"gopl.io/ch4/github"
 )
 
-//!+
+const (
+	LESS_THAN_A_MONTH = "less_than_a_month"
+	LESS_THAN_A_YEAR  = "less_than_a_year"
+	MORE_THAN_A_YEAR  = "more_than_a_year"
+)
+
+// !+
 func main() {
 	result, err := github.SearchIssues(os.Args[1:])
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	categories := make(map[string][]*github.Issue)
+
 	fmt.Printf("%d issues:\n", result.TotalCount)
+	now := time.Now()
 	for _, item := range result.Items {
-		fmt.Printf("#%-5d %9.9s %.55s\n",
-			item.Number, item.User.Login, item.Title)
+		switch{
+		case item.CreatedAt.After(now.Add(-1 * 60 * 24 * 30 * time.Minute)):
+			categories[LESS_THAN_A_MONTH] = append(categories[LESS_THAN_A_MONTH], item)
+		case item.CreatedAt.After(now.Add(-1 * 60 * 24 * 365 * time.Minute)):
+			categories[LESS_THAN_A_YEAR] = append(categories[LESS_THAN_A_YEAR], item)
+		case item.CreatedAt.Before(now.Add(-1 * 60 * 24 * 365 * time.Minute)):
+			categories[MORE_THAN_A_YEAR] = append(categories[MORE_THAN_A_YEAR], item)
+		}
+		// fmt.Printf("#%-5d %9.9s %.55s\n",
+		// 	item.Number, item.User.Login, item.Title)
+	}
+
+	for category, issues := range categories {
+		fmt.Printf("%s issues:\n", category)
+		for _, issue := range issues {
+			fmt.Printf("#%-5d %9.9s %.55s\n",
+				issue.Number, issue.User.Login, issue.Title)
+		}
 	}
 }
 

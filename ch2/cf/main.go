@@ -8,25 +8,84 @@
 package main
 
 import (
+	"bufio"
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
 
+	"gopl.io/ch2/lengthconv"
 	"gopl.io/ch2/tempconv"
 )
 
+var unit = flag.String("u", "temperature", "unit type")
+
 func main() {
-	for _, arg := range os.Args[1:] {
-		t, err := strconv.ParseFloat(arg, 64)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "cf: %v\n", err)
-			os.Exit(1)
+	flag.Parse()
+
+	nonFlagArgs := flag.Args()
+
+	if len(nonFlagArgs) > 0 {
+
+		for _, arg := range nonFlagArgs {
+			fmt.Println(arg)
+			value, err := strconv.ParseFloat(arg, 64)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "cf: %v\n", err)
+				os.Exit(1)
+			}
+
+			switch *unit {
+			case "temperature":
+				convertTemperature(value)
+			case "length":
+				convertLength(value)
+			}
 		}
-		f := tempconv.Fahrenheit(t)
-		c := tempconv.Celsius(t)
-		fmt.Printf("%s = %s, %s = %s\n",
-			f, tempconv.FToC(f), c, tempconv.CToF(c))
+	} else {
+		scanner := bufio.NewScanner(os.Stdin)
+
+		for scanner.Scan() {
+			text := scanner.Text()
+			
+			value, err := strconv.ParseFloat(text, 64)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "cf: %v\n", err)
+				os.Exit(1)
+			}
+
+			switch *unit {
+			case "temperature":
+				convertTemperature(value)
+			case "length":
+				convertLength(value)
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			fmt.Printf("scanner error: %v", err)
+		}
 	}
 }
 
 //!-
+
+func convertTemperature(t float64) {
+	f := tempconv.Fahrenheit(t)
+	c := tempconv.Celsius(t)
+
+	fmt.Printf("%s = %s, %s = %s\n",
+		f, tempconv.FToC(f),
+		c, tempconv.CToF(c),
+	)
+}
+
+func convertLength(l float64) {
+	f := lengthconv.Foot(l)
+	m := lengthconv.Meter(l)
+
+	fmt.Printf("%s = %s, %s = %s\n",
+		f, lengthconv.FToM(f),
+		m, lengthconv.MToF(m),
+	)
+}

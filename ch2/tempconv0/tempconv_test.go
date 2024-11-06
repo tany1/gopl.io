@@ -3,7 +3,11 @@
 
 package tempconv
 
-import "fmt"
+import (
+	"fmt"
+
+	"gopl.io/ch2/tempconv"
+)
 
 func Example_one() {
 	{
@@ -11,6 +15,9 @@ func Example_one() {
 		fmt.Printf("%g\n", BoilingC-FreezingC) // "100" °C
 		boilingF := CToF(BoilingC)
 		fmt.Printf("%g\n", boilingF-CToF(FreezingC)) // "180" °F
+		fmt.Printf("%g\n", tempconv.CToK(234))
+		fmt.Printf("%g\n", tempconv.CToK(0))
+		fmt.Printf("%g\n", tempconv.CToK(-10))
 		//!-arith
 	}
 	/*
@@ -22,6 +29,9 @@ func Example_one() {
 	// Output:
 	// 100
 	// 180
+	// 507.15
+	// 273.15
+	// 263.15
 }
 
 func Example_two() {
